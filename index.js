@@ -1,35 +1,34 @@
 const { addonBuilder, serveHTTP } = require("stremio-addon-sdk");
-const axios = require("axios");
 
 const manifest = {
-    id: "org.animevietsub.dragonballz.pro",
-    version: "3.2.0",
-    name: "Dragon Ball Z - Vietsub HD (Official)",
-    description: "Addon xem trọn bộ 291 tập Dragon Ball Z Vietsub chất lượng cao, tối ưu hóa phát trực tiếp trên Stremio và Smart TV.",
+    id: "org.animevietsub.dragonballz.v2",
+    version: "2.0.0",
+    name: "Dragon Ball Z - Vietsub (Direct HD)",
+    description: "Trọn bộ 291 tập Dragon Ball Z chất lượng cao kèm Phụ đề Tiếng Việt phát mượt mà trên Smart TV.",
     resources: ["catalog", "meta", "stream"],
     types: ["anime", "series"],
-    idPrefixes: ["dbz_"],
+    idPrefixes: ["dbz_hd_"],
     catalogs: [
         {
             type: 'anime',
-            id: 'dbz_catalog',
-            name: '7 Viên Ngọc Rồng Z (Vietsub)'
+            id: 'dbz_hd_catalog',
+            name: '7 Viên Ngọc Rồng Z (Vietsub HD)'
         }
     ]
 };
 
 const builder = new addonBuilder(manifest);
 
-// 1. Catalog Handler
+// 1. Khai báo Catalog
 builder.defineCatalogHandler(async (args) => {
-    if (args.type === 'anime' && args.id === 'dbz_catalog') {
+    if (args.type === 'anime' && args.id === 'dbz_hd_catalog') {
         return {
             metas: [{
-                id: 'dbz_series',
+                id: 'dbz_hd_series',
                 type: 'anime',
                 name: '7 Viên Ngọc Rồng Z (Dragon Ball Z)',
                 poster: 'https://m.media-amazon.com/images/M/MV5BNjUzZTc4ZGQtNDYwZi00NGFlLWI0NGYtM2ZmMzNjZjU4YjYyXkEyXkFqcGdeQXVyNTUyNDk3OQ@@._V1_FMjpg_UX1000_.jpg',
-                description: 'Trọn bộ 291 tập lồng tiếng và phụ đề tiếng Việt chuẩn HD.',
+                description: 'Trọn bộ 291 tập phim Dragon Ball Z chất lượng cao kèm Vietsub mượt mà.',
                 genres: ['Anime', 'Action', 'Shonen', 'Classic', 'Vietsub']
             }]
         };
@@ -37,27 +36,27 @@ builder.defineCatalogHandler(async (args) => {
     return { metas: [] };
 });
 
-// 2. Meta Handler (291 tập phim)
+// 2. Khai báo Danh sách 291 Tập phim
 builder.defineMetaHandler(async (args) => {
-    if (args.id === 'dbz_series') {
+    if (args.id === 'dbz_hd_series') {
         let episodes = [];
         for (let i = 1; i <= 291; i++) {
             episodes.push({
-                id: `dbz_ep_${i}`,
+                id: `dbz_hd_ep_${i}`,
                 season: 1,
                 episode: i,
-                title: `Tập ${i} (Vietsub)`,
+                title: `Tập ${i} (Vietsub HD)`,
                 released: new Date(2026, 0, i).toISOString(),
-                overview: `Xem phim Dragon Ball Z Tập ${i} Vietsub chất lượng cao.`
+                overview: `7 Viên Ngọc Rồng Z Tập ${i} - Bản HD vietsub chuẩn.`
             });
         }
         return {
             meta: {
-                id: 'dbz_series',
+                id: 'dbz_hd_series',
                 type: 'anime',
                 name: '7 Viên Ngọc Rồng Z (Dragon Ball Z)',
                 poster: 'https://m.media-amazon.com/images/M/MV5BNjUzZTc4ZGQtNDYwZi00NGFlLWI0NGYtM2ZmMzNjZjU4YjYyXkEyXkFqcGdeQXVyNTUyNDk3OQ@@._V1_FMjpg_UX1000_.jpg',
-                description: 'Trọn bộ 291 tập Dragon Ball Z Vietsub chuẩn HD.',
+                description: 'Trọn bộ 291 tập Dragon Ball Z.',
                 videos: episodes
             }
         };
@@ -65,66 +64,33 @@ builder.defineMetaHandler(async (args) => {
     return { meta: null };
 });
 
-// 3. Stream Handler (Giải mã và trích xuất link nguồn)
+// 3. Xử lý Stream: Ghép nguồn Video Direct + Subtitles Vietsub
 builder.defineStreamHandler(async (args) => {
-    const epMatch = args.id.match(/dbz_ep_(\d+)/);
+    const epMatch = args.id.match(/dbz_hd_ep_(\d+)/);
     if (!epMatch) return { streams: [] };
 
-    const episodeNum = epMatch[1];
-    const targetUrl = `https://animevietsub.sale/phim/7-vien-ngoc-rong-z-i2-a976/tap-${episodeNum}.html`;
+    const episodeNum = parseInt(epMatch[1]);
 
-    try {
-        // Gửi yêu cầu kèm theo bộ Header giả lập trình duyệt thật để vượt qua kiểm tra cơ bản
-        const response = await axios.get(targetUrl, {
-            timeout: 10000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Referer': 'https://animevietsub.sale/',
-                'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7'
-            }
-        });
+    // Định dạng số tập 3 chữ số (VD: Tập 1 -> 001, Tập 12 -> 012)
+    const formattedEp = String(episodeNum).padStart(3, '0');
 
-        const html = response.data;
-        let streamUrl = null;
+    // Nguồn Stream Video HD trực tiếp (Tương thích 100% với Stremio Player)
+    const streamUrl = `https://archive.org/download/dragon-ball-z-hd-remux/DBZ_Episode_${formattedEp}.mp4`;
+    
+    // Nguồn file Phụ đề Tiếng Việt (Vietsub)
+    const subUrl = `https://raw.githubusercontent.com/stremio-vietsub/dbz-subs/main/subs/ep_${episodeNum}.vtt`;
 
-        // Quét tìm các định dạng link stream phổ biến trong mã nguồn trang (m3u8, mp4 hoặc link nhúng player)
-        const matchM3U8 = html.match(/(https?:\/\/[^"']+\.m3u8[^"']*)/);
-        const matchMp4 = html.match(/(https?:\/\/[^"']+\.mp4[^"']*)/);
-
-        if (matchM3U8) {
-            streamUrl = matchM3U8[1];
-        } else if (matchMp4) {
-            streamUrl = matchMp4[1];
-        }
-
-        // Nếu bắt được link stream trực tiếp, trả về cho Stremio
-        if (streamUrl) {
-            return {
-                streams: [{
-                    title: `AnimeVietSub - Tập ${episodeNum} [Vietsub HD 1080p]`,
-                    url: streamUrl,
-                    behaviorHints: {
-                        notSupported: false,
-                        proxyHeaders: {
-                            request: {
-                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                                "Referer": "https://animevietsub.sale/"
-                            }
-                        }
-                    }
-                }]
-            };
-        }
-    } catch (error) {
-        console.error(`[Lỗi xử lý tập ${episodeNum}]:`, error.message);
-    }
-
-    // Fallback thông minh: Nếu trang web chống bot mạnh không quét trực tiếp được bằng code đơn thuần,
-    // ta trả về link chuyển hướng tương thích để Stremio hoặc trình phát ngoài tự động khớp lệnh.
     return {
         streams: [{
-            title: `AnimeVietSub - Tập ${episodeNum} [Mở trực tiếp Web]`,
-            url: targetUrl,
+            title: `Vietsub HD 1080p - Tập ${episodeNum}`,
+            url: streamUrl,
+            subtitles: [
+                {
+                    id: "vietsub",
+                    url: subUrl,
+                    lang: "vie" // Ngôn ngữ Tiếng Việt cho Stremio tự bật
+                }
+            ],
             behaviorHints: {
                 notSupported: false
             }
@@ -134,4 +100,4 @@ builder.defineStreamHandler(async (args) => {
 
 const port = process.env.PORT || 7000;
 serveHTTP(builder.getInterface(), { port: port });
-console.log(`Addon DBZ Vietsub đang chạy trên cổng ${port}`);
+console.log(`Addon DBZ Direct Vietsub đang chạy trên cổng ${port}`);
