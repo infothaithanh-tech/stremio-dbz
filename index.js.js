@@ -9,12 +9,20 @@ const manifest = {
     description: "Addon xem trọn bộ 291 tập Dragon Ball Z chất lượng cao, tự động fix lỗi và ổn định 24/7.",
     resources: ["catalog", "meta", "stream"],
     types: ["anime", "series"],
-    idPrefixes: ["dbz_"]
+    idPrefixes: ["dbz_"],
+    // QUAN TRỌNG: Thêm trường catalogs dưới dạng một mảng để fix lỗi của SDK
+    catalogs: [
+        {
+            type: 'anime',
+            id: 'dbz_catalog',
+            name: '7 Viên Ngọc Rồng Z'
+        }
+    ]
 };
 
 const builder = new addonBuilder(manifest);
 
-// 1. Quản lý Catalog hiển thị trong Stremio
+// 1. Quản lý Catalog
 builder.defineCatalogHandler(async (args) => {
     if (args.type === 'anime' && args.id === 'dbz_catalog') {
         return {
@@ -31,7 +39,7 @@ builder.defineCatalogHandler(async (args) => {
     return { metas: [] };
 });
 
-// 2. Khai báo danh sách 291 tập phim
+// 2. Khai báo danh sách 291 tập phim (Meta Handler)
 builder.defineMetaHandler(async (args) => {
     if (args.id === 'dbz_series') {
         let episodes = [];
